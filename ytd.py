@@ -1,92 +1,57 @@
-from tkinter import *
-from tkinter import ttk
-from tkinter import filedialog
-from pytube import YouTube #pip install pytube3
+import streamlit as st
+from pytube import YouTube
+from moviepy.video.io.VideoFileClip import VideoFileClip
 
-Folder_Name = ""
+def download_video(url, output_path):
+    yt = YouTube(url)
+    video_stream = yt.streams.get_highest_resolution()
+    video_path = video_stream.download(output_path)
+    return video_path, yt.length
 
-#file location
-def openLocation():
-    global Folder_Name
-    Folder_Name = filedialog.askdirectory()
-    if(len(Folder_Name) > 1):
-        locationError.config(text=Folder_Name,fg="green")
+def trim_video(video_path, start_time, end_time):
+    video_clip = VideoFileClip(video_path).subclip(start_time, end_time)
+    trimmed_video_path = video_path.replace(".mp4", "_trimmed.mp4")
+    video_clip.write_videofile(trimmed_video_path, codec="libx264", audio_codec="aac", temp_audiofile="temp_audio.m4a", remove_temp=True)
+    return trimmed_video_path
 
-    else:
-        locationError.config(text="Please Choose Folder!!",fg="red")
+def format_time(seconds):
+    minutes, seconds = divmod(seconds, 60)
+    return f"{int(minutes)}:{int(seconds)}"
 
-#donwload video
-def DownloadVideo():
-    choice = ytdchoices.get()
-    url = ytdEntry.get()
+def main():
+    st.title("YouTube Video Trimmer and Downloader")
 
-    if(len(url)>1):
-        ytdError.config(text="")
-        yt = YouTube(url)
+    youtube_url = st.text_input("Enter YouTube Video URL:")
+    output_folder = "./output"
+    full_video_path = None
 
-        if(choice == choices[0]):
-            select = yt.streams.filter(progressive=True).first()
+    if youtube_url:
+        st.subheader("YouTube Video Preview:")
+        st.video(youtube_url)
+        try:
+            yt = YouTube(youtube_url)
+            video_duration = yt.length
+            st.info(f"Video Duration: {format_time(video_duration)} seconds")
+        except:
+            st.warning("Unable to fetch video duration. Please check the URL.")
 
-        elif(choice == choices[1]):
-            select = yt.streams.filter(progressive=True,file_extension='mp4').last()
+        st.subheader("Trimming Section:")
+        start_time = st.slider("Start Time (seconds)", 0, video_duration, 0, key="trim_start_slider")
+        st.text(f"Selected Start Time: {format_time(start_time)}")
+        end_time = st.slider("End Time (seconds)", 0, video_duration, video_duration, key="trim_end_slider")
+        st.text(f"Selected End Time: {format_time(end_time)}")
+        if start_time >= end_time:
+            st.warning("Start time must be before end time.")
 
-        elif(choice == choices[2]):
-            select = yt.streams.filter(only_audio=True).first()
+        if st.button("Trim and Download"):
+            if youtube_url and full_video_path is None:
+                output_path = output_folder
+                full_video_path, _ = download_video(youtube_url, output_path)
 
-        else:
-            ytdError.config(text="Paste Link again!!",fg="red")
+            trimmed_video_path = trim_video(full_video_path, start_time, end_time)
+            st.success("Your Trimmed Video is here, click on three dots to download or else find it at: {}".format(trimmed_video_path))
+            st.video(trimmed_video_path)
+    st.text("Made with ❤️ by Sagnik")
 
-
-    #download function
-    select.download(Folder_Name)
-    ytdError.config(text="Download Completed!!")
-
-
-
-root = Tk()
-root.title("YTD Downloader")
-root.geometry("350x400") #set window
-root.columnconfigure(0,weight=1)#set all content in center.
-
-#Ytd Link Label
-ytdLabel = Label(root,text="Enter the URL of the Video",font=("jost",15))
-ytdLabel.grid()
-
-#Entry Box
-ytdEntryVar = StringVar()
-ytdEntry = Entry(root,width=50,textvariable=ytdEntryVar)
-ytdEntry.grid()
-
-#Error Msg
-ytdError = Label(root,text="Error Msg",fg="red",font=("jost",10))
-ytdError.grid()
-
-#Asking save file label
-saveLabel = Label(root,text="Save the Video File",font=("jost",15,"bold"))
-saveLabel.grid()
-
-#btn of save file
-saveEntry = Button(root,width=10,bg="red",fg="white",text="Choose Path",command=openLocation)
-saveEntry.grid()
-
-#Error Msg location
-locationError = Label(root,text="Error Msg of Path",fg="red",font=("jost",10))
-locationError.grid()
-
-#Download Quality
-ytdQuality = Label(root,text="Select Quality",font=("jost",15))
-ytdQuality.grid()
-
-#combobox
-choices = ["720p","144p","Only Audio"]
-ytdchoices = ttk.Combobox(root,values=choices)
-ytdchoices.grid()
-
-#donwload btn
-downloadbtn = Button(root,text="Donwload",width=10,bg="red",fg="white",command=DownloadVideo)
-downloadbtn.grid()
-
-#developer Label
-developerlabel = Label(root,text="Dream Developers",font=("jost",15))
-developerlabel.grid()
-root.mainloop()
+if __name__ == "__main__":
+    main()
