@@ -1,2 +1,3 @@
-streamlit==1.15.0
-pytube3==12.8.4
+moviepy==1.0.3
+pytube==15.0.0
+streamlit==1.16.0
