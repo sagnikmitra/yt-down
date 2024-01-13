@@ -12,7 +12,7 @@ def trim_video(video_path, start_time, end_time):
     video_clip = VideoFileClip(video_path).subclip(start_time, end_time)
     trimmed_video_path = video_path.replace(".mp4", "_trimmed.mp4")
     video_clip.write_videofile(trimmed_video_path, codec="libx264", audio_codec="aac", temp_audiofile="temp_audio.m4a", remove_temp=True)
-    return trimmed_video_path
+    return trimmed_video_path, video_clip.duration
 
 def format_time(seconds):
     minutes, seconds = divmod(seconds, 60)
@@ -42,15 +42,19 @@ def main():
         st.text(f"Selected End Time: {format_time(end_time)}")
         if start_time >= end_time:
             st.warning("Start time must be before end time.")
-
+        total_length = end_time - start_time
+        st.info(f"Total Length of Trimmed Video: {format_time(total_length)} seconds")
         if st.button("Trim and Download"):
             if youtube_url and full_video_path is None:
                 output_path = output_folder
                 full_video_path, _ = download_video(youtube_url, output_path)
 
-            trimmed_video_path = trim_video(full_video_path, start_time, end_time)
+            trimmed_video_path, trimmed_video_duration = trim_video(full_video_path, start_time, end_time)
             st.success("Your Trimmed Video is here, click on three dots to download or else find it at: {}".format(trimmed_video_path))
             st.video(trimmed_video_path)
+            
+            
+    
     st.text("Made with ❤️ by Sagnik")
 
 if __name__ == "__main__":
